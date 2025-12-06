@@ -27,7 +27,7 @@ def infer_result_type(r: Dict) -> ResultType:
     return classify_result_type(r["url"])
 
 
-@router.post("", response_model=List[schemas.SearchResultOut])
+@router.post("", response_model=schemas.SearchResponse)
 def perform_search(
     payload: schemas.SearchRequest,
     db: Session = Depends(get_db),
@@ -39,6 +39,7 @@ def perform_search(
 
     try:
         raw_results = provider.search(payload.query, limit=payload.limit)
+        has_more = len(raw_results) == payload.limit  # provider gave us full page
     except requests.HTTPError as e:
         raise HTTPException(
             status_code=502,
@@ -74,12 +75,12 @@ def perform_search(
                     title=r["title"],
                     url=r["url"],
                     snippet=r["snippet"],
-                    type=infer_result_type(r),        # <--- changed
+                    type=infer_result_type(r),
                     timestamp=now,
                     preview_url=r.get("preview_url"),
                 )
             )
-        return out
+        return schemas.SearchResponse(results=out, has_more=has_more)
 
     # CASE 2: Save query + results but still return "live" preview URLs
     q = models.SearchQuery(
@@ -122,4 +123,4 @@ def perform_search(
                 preview_url=r.get("preview_url"),
             )
         )
-    return out
+    return schemas.SearchResponse(results=out, has_more=has_more)

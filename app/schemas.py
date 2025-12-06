@@ -28,6 +28,11 @@ class SearchResultOut(BaseModel):
     class Config:
         orm_mode = True
 
+        
+class SearchResponse(BaseModel):
+    results: List[SearchResultOut]
+    has_more: bool
+
 
 class SettingsOut(BaseModel):
     filter_mode: FilterMode

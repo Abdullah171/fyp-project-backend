@@ -17,7 +17,7 @@ def get_detector() -> NudeDetector:
         _detector = NudeDetector()
     return _detector
 
-def is_nude(image_bytes: bytes, threshold: float = 0.65) -> bool:
+def is_nude(image_bytes: bytes, threshold: float = 0.5) -> bool:
     det = get_detector()
     results = det.detect(image_bytes)
     return any(r.get("score", 0.0) >= threshold for r in results)
