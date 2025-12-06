@@ -1,0 +1,30 @@
+use_default_settings: true
+
+general:
+  instance_name: "My SearxNG"
+
+search:
+  safe_search: 2
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "kjanfkjenkfewn"
+  image_proxy: true
+
+outgoing:
+  # maybe increase request_timeout, e.g. 10 or 20 sec
+  request_timeout: 20
+  # optional: number of retries if a request fails
+  retries: 2
+  # connection pool & keepalive settings can sometimes help
+  keepalive_expiry: 10.0
+
+engines:
+  - name: pinterest
+    disabled: true
+  - name: ahmia
+    disabled: true
+  - name: torch
+    disabled: true

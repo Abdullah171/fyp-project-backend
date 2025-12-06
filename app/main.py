@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import Base, engine
 from .routers import search, stats, settings as settings_router
+from .routers import media  # NEW
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(search.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
+app.include_router(media.router, prefix="/api")  # NEW
 
 
 @app.get("/health")

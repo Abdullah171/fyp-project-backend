@@ -11,14 +11,26 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  searxng:
+    image: searxng/searxng:latest
+    container_name: netsentinel_searxng
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    ports:
+      - "8888:8080"   # or whichever host port you choose
+    environment:
+      - BASE_URL=http://localhost:8888/
+      - INSTANCE_NAME=NetSentinel SearxNG
+
   backend:
     build: .
     container_name: netsentinel_backend
     env_file: .env
     depends_on:
       - db
+      - searxng
     ports:
-      - "8000:8000"
+      - "8000:8000"      # backend on host http://localhost:8000
     volumes:
       - .:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

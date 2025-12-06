@@ -1,7 +1,17 @@
 fastapi
 uvicorn[standard]
-SQLAlchemy>=2.0
+
+SQLAlchemy
 psycopg2-binary
+
+pydantic
 pydantic-settings
-python-dotenv
+
 requests
+
+# For CORS middleware
+python-multipart
+
+# Image censoring
+nudenet
+Pillow

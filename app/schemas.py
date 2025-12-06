@@ -21,6 +21,10 @@ class SearchResultOut(BaseModel):
     type: ResultType
     timestamp: datetime
 
+    # NEW: relative or absolute URL to a (possibly blurred) thumbnail
+    # For SearxNG this will look like: /api/media/proxy?url=<encoded_remote_url>
+    preview_url: Optional[str] = None
+
     class Config:
         orm_mode = True
 
