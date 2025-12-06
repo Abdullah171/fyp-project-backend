@@ -45,14 +45,15 @@ def proxy_image(
 
     original_bytes = resp.content
 
-    # Read current global settings (the same as used in /api/settings)
     settings = get_or_create_global_settings(db)
 
     if settings.filter_mode == FilterMode.relaxed:
-        # relaxed: do NOT blur – show original bytes
         censored_bytes = original_bytes
-    else:
-        # moderate / strict: blur if NudeNet says it's nude
-        censored_bytes, _ = censor_if_needed(original_bytes)
+    elif settings.filter_mode == FilterMode.moderate:
+        # less aggressive – only blur when very certain
+        censored_bytes, _ = censor_if_needed(original_bytes, threshold=0.8)
+    else:  # strict
+        # more aggressive – but you can still bump this to 0.6–0.7 if it's too much
+        censored_bytes, _ = censor_if_needed(original_bytes, threshold=0.6)
 
     return StreamingResponse(BytesIO(censored_bytes), media_type="image/jpeg")

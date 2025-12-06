@@ -34,13 +34,13 @@ def blur_image(image_bytes: bytes, radius: int = 25) -> bytes:
     return out.getvalue()
 
 
-def censor_if_needed(image_bytes: bytes) -> Tuple[bytes, bool]:
+def censor_if_needed(image_bytes: bytes, threshold: float = 0.5) -> Tuple[bytes, bool]:
     """
     Returns (output_image_bytes, was_censored).
     If NudeNet says the image is nude, blur it. Otherwise keep original.
     """
     try:
-        nude = is_nude(image_bytes)
+        nude = is_nude(image_bytes, threshold=threshold)
     except Exception:
         # If NudeNet fails for some reason, fail open (do not break search)
         return image_bytes, False
