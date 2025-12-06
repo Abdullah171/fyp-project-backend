@@ -12,52 +12,6 @@ class BaseProvider:
         raise NotImplementedError
 
 
-class WikipediaProvider(BaseProvider):
-    API_URL = "https://en.wikipedia.org/w/api.php"
-
-    def search(self, query: str, limit: int = 10) -> List[Dict]:
-        params = {
-            "action": "query",
-            "list": "search",
-            "srsearch": query,
-            "format": "json",
-            "utf8": 1,
-            "srlimit": limit,
-        }
-
-        headers = {
-            "User-Agent": "NetSentinelSafeSearch/1.0 (student project; contact: youremail@example.com)"
-        }
-
-        resp = requests.get(self.API_URL, params=params, headers=headers, timeout=5)
-        resp.raise_for_status()
-        data = resp.json()
-        out: List[Dict] = []
-
-        for item in data.get("query", {}).get("search", []):
-            title = item["title"]
-            snippet = item["snippet"]
-            url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
-
-            clean_snippet = (
-                snippet.replace('<span class="searchmatch">', "")
-                .replace("</span>", "")
-                .replace("&quot;", '"')
-            )
-
-            out.append(
-                {
-                    "title": title,
-                    "url": url,
-                    "snippet": clean_snippet,
-                    # wikipedia has no image thumbnail in this API
-                    "preview_url": None,
-                }
-            )
-
-        return out
-
-
 class SearxNGProvider(BaseProvider):
     """
     Calls your SearxNG instance /search?format=json and normalizes the results
@@ -136,8 +90,6 @@ def get_provider() -> BaseProvider:
 
     if settings.SEARCH_PROVIDER.lower() == "searxng":
         _provider_singleton = SearxNGProvider()
-    elif settings.SEARCH_PROVIDER.lower() == "wikipedia":
-        _provider_singleton = WikipediaProvider()
     else:
         # fallback
         _provider_singleton = SearxNGProvider()
