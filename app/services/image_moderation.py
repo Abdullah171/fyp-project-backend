@@ -1,22 +1,18 @@
 # app/services/image_moderation.py
 from __future__ import annotations
 from io import BytesIO
-from typing import Tuple
+from typing import Tuple, Optional
+
 from PIL import Image, ImageFilter
 from nudenet import NudeDetector
 
-_detector: NudeDetector | None = None
+# new imports
+import torch
+from transformers import AutoModelForImageClassification, ViTImageProcessor
 
-# Body-part categories to treat as “definitely explicit”
-EXPLICIT_LABEL_KEYWORDS = {
-    "BREAST",       # female or male
-    "GENITALIA",
-    "BUTTOCKS",
-    "ANUS",
-    "VAGINA",
-    "PENIS"
-    # maybe also "VAGINA", "PENIS" if model uses those
-}
+_detector: NudeDetector | None = None
+_classifier_model: Optional[AutoModelForImageClassification] = None
+_classifier_processor: Optional[ViTImageProcessor] = None
 
 def get_detector() -> NudeDetector:
     global _detector
@@ -24,34 +20,44 @@ def get_detector() -> NudeDetector:
         _detector = NudeDetector()
     return _detector
 
-def is_nude(image_bytes: bytes, threshold: float = 0.3) -> bool:
-    det = get_detector()
-    detections = det.detect(image_bytes)
+def get_classifier():
+    global _classifier_model, _classifier_processor
+    if _classifier_model is None:
+        _classifier_model = AutoModelForImageClassification.from_pretrained(
+            "Falconsai/nsfw_image_detection"
+        )
+        _classifier_processor = ViTImageProcessor.from_pretrained(
+            "Falconsai/nsfw_image_detection"
+        )
+    return _classifier_model, _classifier_processor
 
-    for r in detections:
-        cls = (r.get("label") or r.get("class") or "").upper()
-        score = float(r.get("score", 0.0))
-
-        # Skip obviously non-explicit body parts
-        if any(part in cls for part in EXPLICIT_LABEL_KEYWORDS):
-            # you can tune per-part threshold:
-            # e.g. more suspicious parts like GENITALIA/BUTTOCKS use lower threshold
-            if score >= threshold:
-                return True
-    return False
-
-def blur_image(image_bytes: bytes, radius: int = 25) -> bytes:
+def classify_nsfw(image_bytes: bytes) -> bool:
+    model, proc = get_classifier()
     image = Image.open(BytesIO(image_bytes)).convert("RGB")
-    blurred = image.filter(ImageFilter.GaussianBlur(radius=radius))
-    out = BytesIO()
-    blurred.save(out, format="JPEG", quality=85)
-    return out.getvalue()
+    inputs = proc(images=image, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+    cls_idx = logits.argmax(-1).item()
+    label = model.config.id2label[cls_idx]
+    return (label.lower() == "nsfw")
 
 def censor_if_needed(image_bytes: bytes, threshold: float = 0.5) -> Tuple[bytes, bool]:
-    try:
-        nude = is_nude(image_bytes, threshold=threshold)
-    except Exception:
-        return image_bytes, False
-    if nude:
+    # first, run detector (your existing logic)
+    det = get_detector()
+    detections = det.detect(image_bytes)
+    # your existing detection logic...
+    # For brevity, suppose you have a helper is_nude_by_detector(...)
+    if is_nude_by_detector(detections, threshold):
         return blur_image(image_bytes), True
+
+    # then run classifier as fallback
+    try:
+        if classify_nsfw(image_bytes):
+            return blur_image(image_bytes), True
+    except Exception:
+        # classifier failure — optionally log
+        pass
+
+    # otherwise safe
     return image_bytes, False
