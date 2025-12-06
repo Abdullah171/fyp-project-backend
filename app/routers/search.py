@@ -5,14 +5,26 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import requests
-
+from typing import Dict
 from .. import models, schemas
 from ..database import get_db
 from ..services.search_providers import get_provider
 from ..services.filtering import filter_results, classify_result_type
 from ..utils.settings import get_or_create_global_settings
+from ..models import ResultType  
 
 router = APIRouter(prefix="/search", tags=["search"])
+
+
+
+def infer_result_type(r: Dict) -> ResultType:
+    """
+    Prefer 'image' if we have a preview_url (img_src/thumbnail from SearxNG).
+    Otherwise fall back to URL-based classification.
+    """
+    if r.get("preview_url"):
+        return ResultType.image
+    return classify_result_type(r["url"])
 
 
 @router.post("", response_model=List[schemas.SearchResultOut])
@@ -62,7 +74,7 @@ def perform_search(
                     title=r["title"],
                     url=r["url"],
                     snippet=r["snippet"],
-                    type=classify_result_type(r["url"]),
+                    type=infer_result_type(r),        # <--- changed
                     timestamp=now,
                     preview_url=r.get("preview_url"),
                 )
@@ -87,7 +99,7 @@ def perform_search(
             title=r["title"],
             url=r["url"],
             snippet=r["snippet"],
-            type=classify_result_type(r["url"]),
+            type=infer_result_type(r),            # <--- changed
             is_blocked=False,
         )
         db.add(row)

@@ -74,7 +74,10 @@ class SearxNGProvider(BaseProvider):
             "format": "json",
             "categories": self.categories,
             "language": "en",
-            "safesearch": 2,  # 0=off, 1=moderate, 2=strict (SearxNG side) :contentReference[oaicite:1]{index=1}
+            # OLD:
+            # "safesearch": 2,
+            # NEW: let our own filters + NudeNet do the work
+            "safesearch": 0,
         }
 
         url = f"{self.base_url}/search"
