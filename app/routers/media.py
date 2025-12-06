@@ -17,15 +17,12 @@ from ..database import get_db
 @router.get("/proxy")
 def proxy_image(
     url: str = Query(..., description="Original image URL (URL-encoded)"),
+    mode: FilterMode | None = Query(
+        None,
+        description="Optional override for filter mode: relaxed/moderate/strict",
+    ),
     db: Session = Depends(get_db),
 ):
-    """
-    Downloads an image from the given URL, runs NudeNet censorship
-    depending on current filter_mode, and returns the (possibly blurred) image.
-
-    Frontend should NEVER call remote thumbnails directly. It should always use:
-        <img src={`/api/media/proxy?url=${encodeURIComponent(img_src)}`} />
-    """
     decoded_url = unquote_plus(url)
 
     if not decoded_url.startswith(("http://", "https://")):
@@ -46,14 +43,13 @@ def proxy_image(
     original_bytes = resp.content
 
     settings = get_or_create_global_settings(db)
+    effective_mode = mode or settings.filter_mode
 
-    if settings.filter_mode == FilterMode.relaxed:
+    if effective_mode == FilterMode.relaxed:
         censored_bytes = original_bytes
-    elif settings.filter_mode == FilterMode.moderate:
-        # less aggressive – only blur when very certain
+    elif effective_mode == FilterMode.moderate:
         censored_bytes, _ = censor_if_needed(original_bytes, threshold=0.8)
     else:  # strict
-        # more aggressive – but you can still bump this to 0.6–0.7 if it's too much
         censored_bytes, _ = censor_if_needed(original_bytes, threshold=0.6)
 
     return StreamingResponse(BytesIO(censored_bytes), media_type="image/jpeg")
