@@ -18,13 +18,14 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 def infer_result_type(r: Dict) -> ResultType:
-    """
-    Prefer 'image' if we have a preview_url (img_src/thumbnail from SearxNG).
-    Otherwise fall back to URL-based classification.
-    """
-    if r.get("preview_url"):
-        return ResultType.image
-    return classify_result_type(r["url"])
+  """
+  Prefer 'image' if we have a preview_url (img_src/thumbnail from SearxNG).
+  Otherwise fall back to URL-based classification.
+  """
+  if r.get("preview_url"):
+      return ResultType.image
+  return classify_result_type(r["url"])
+
 
 
 @router.post("", response_model=schemas.SearchResponse)
@@ -39,17 +40,27 @@ def perform_search(
 
     try:
         raw_results = provider.search(payload.query, limit=payload.limit)
-        has_more = len(raw_results) == payload.limit  # provider gave us full page
+        has_more = len(raw_results) == payload.limit
     except requests.HTTPError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Upstream search provider error: {e.response.status_code}",
-        )
-    except requests.RequestException:
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to contact upstream search provider",
-        )
+        # Upstream returned HTTP error (e.g. 500)
+        logger.exception("Upstream search provider HTTP error")
+        # 👉 Either raise 502 (strict)...
+        # raise HTTPException(
+        #     status_code=502,
+        #     detail=f"Upstream search provider error: {e.response.status_code}",
+        # )
+        # ...or degrade gracefully:
+        return schemas.SearchResponse(results=[], has_more=False)
+    except requests.RequestException as e:
+        # Timeouts / connection issues / DNS, etc.
+        logger.exception("Failed to contact upstream search provider")
+        # 👉 Again, either raise...
+        # raise HTTPException(
+        #     status_code=502,
+        #     detail=f"Failed to contact upstream search provider: {e}",
+        # )
+        # ...or degrade gracefully:
+        return schemas.SearchResponse(results=[], has_more=False)
 
     settings = get_or_create_global_settings(db)
     effective_mode = payload.filter_mode or settings.filter_mode
@@ -91,7 +102,7 @@ def perform_search(
         blocked_results=blocked_count,
     )
     db.add(q)
-    db.flush()  # q.id available
+    db.flush()
 
     db_results: List[models.SearchResult] = []
     for r in filtered:
@@ -100,7 +111,7 @@ def perform_search(
             title=r["title"],
             url=r["url"],
             snippet=r["snippet"],
-            type=infer_result_type(r),            # <--- changed
+            type=infer_result_type(r),
             is_blocked=False,
         )
         db.add(row)
@@ -109,7 +120,6 @@ def perform_search(
     db.commit()
     db.refresh(q)
 
-    # Build response using DB IDs + timestamps, but keep provider's preview_url
     out: List[schemas.SearchResultOut] = []
     for r, row in zip(filtered, db_results):
         out.append(

@@ -14,17 +14,33 @@ server:
   image_proxy: true
 
 outgoing:
-  # maybe increase request_timeout, e.g. 10 or 20 sec
   request_timeout: 20
-  # optional: number of retries if a request fails
   retries: 2
-  # connection pool & keepalive settings can sometimes help
   keepalive_expiry: 10.0
 
 engines:
+  # 🔴 Disable Startpage (text)
+  - name: startpage
+    disabled: true
+
+  # 🔴 Disable Startpage (images)
+  - name: startpage images
+    disabled: true
+
+  # 🔴 Disable DuckDuckGo (text)
+  - name: duckduckgo
+    disabled: true
+
+  # 🔴 Disable DuckDuckGo (images)
+  - name: duckduckgo images
+    disabled: true
+
+  # your original overrides
   - name: pinterest
     disabled: true
+
   - name: ahmia
     disabled: true
+
   - name: torch
     disabled: true
