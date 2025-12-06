@@ -1,6 +1,6 @@
 # app/services/search_providers.py
 from typing import List, Dict, Optional
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse, urlunparse
 
 import requests
 
@@ -68,15 +68,27 @@ class SearxNGProvider(BaseProvider):
         self.base_url = (base_url or settings.SEARXNG_URL).rstrip("/")
         self.categories = categories or settings.SEARXNG_CATEGORIES
 
+    def _normalize_img_url(self, img: str) -> str:
+        if not img:
+            return img
+
+        parsed_img = urlparse(img)
+        base = urlparse(self.base_url)  # e.g. http://searxng:8080
+
+        # if searx gave us localhost/127.0.0.1 or missing host,
+        # swap to the container host from SEARXNG_URL
+        if parsed_img.hostname in ("localhost", "127.0.0.1") or not parsed_img.netloc:
+            parsed_img = parsed_img._replace(scheme=base.scheme, netloc=base.netloc)
+            img = urlunparse(parsed_img)
+
+        return img
+
     def search(self, query: str, limit: int = 10) -> List[Dict]:
         params = {
             "q": query,
             "format": "json",
             "categories": self.categories,
             "language": "en",
-            # OLD:
-            # "safesearch": 2,
-            # NEW: let our own filters + NudeNet do the work
             "safesearch": 0,
         }
 
@@ -94,14 +106,12 @@ class SearxNGProvider(BaseProvider):
             title = item.get("title") or item.get("url") or "Untitled"
             snippet = item.get("content") or ""
             result_url = item.get("url") or ""
-            # try to find an image thumb from SearxNG
-            img = item.get("img_src") or item.get("thumbnail") or None
 
-            # IMPORTANT:
-            # We always expose image URLs through our own /api/media/proxy endpoint,
-            # so the frontend never hits the original URL directly.
+            img = item.get("img_src") or item.get("thumbnail") or None
             preview_url: Optional[str] = None
+
             if img:
+                img = self._normalize_img_url(img)
                 encoded = quote_plus(img)
                 preview_url = f"/api/media/proxy?url={encoded}"
 
@@ -115,7 +125,6 @@ class SearxNGProvider(BaseProvider):
             )
 
         return raw_results
-
 
 _provider_singleton: BaseProvider | None = None
 

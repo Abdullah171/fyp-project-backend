@@ -70,7 +70,11 @@ class GlobalSettings(Base):
     __tablename__ = "global_settings"
 
     id = Column(Integer, primary_key=True, index=True)
-    filter_mode = Column(Enum(FilterMode), default=FilterMode.strict, nullable=False)
+    # OLD:
+    # filter_mode = Column(Enum(FilterMode), default=FilterMode.strict, nullable=False)
+    # NEW:
+    filter_mode = Column(Enum(FilterMode), default=FilterMode.relaxed, nullable=False)
+
     parental_controls = Column(Boolean, default=True)
     notifications = Column(Boolean, default=True)
     save_search_history = Column(Boolean, default=True)
@@ -78,3 +82,4 @@ class GlobalSettings(Base):
     # comma-separated lists
     blocked_keywords = Column(Text, default="")
     allowed_domains = Column(Text, default="")
+

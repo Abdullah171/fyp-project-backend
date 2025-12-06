@@ -17,12 +17,11 @@ def get_detector() -> NudeDetector:
         _detector = NudeDetector()
     return _detector
 
-def is_nude(image_bytes: bytes, threshold: float = 0.6) -> bool:
+def is_nude(image_bytes: bytes, threshold: float = 0.65) -> bool:
     det = get_detector()
-    # NudeDetector.detect returns list of detections; you can interpret any detection 
-    # with score above threshold as "nude".
     results = det.detect(image_bytes)
     return any(r.get("score", 0.0) >= threshold for r in results)
+
 
 def blur_image(image_bytes: bytes, radius: int = 25) -> bytes:
     """

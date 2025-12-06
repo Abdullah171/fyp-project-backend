@@ -8,14 +8,16 @@ from ..models import FilterMode, ResultType
 # Very simple keyword lists – you can extend these
 STRICT_KEYWORDS = {"sex", "porn", "adult", "nsfw", "xxx", "erotic"}
 MODERATE_KEYWORDS = {"porn", "nsfw", "xxx"}
-RELAXED_KEYWORDS = {"porn"}
 
+# 🔥 Relaxed should NOT block porn etc by default
+RELAXED_KEYWORDS: set[str] = set()
 
 def get_base_keywords(mode: FilterMode) -> set[str]:
     if mode == FilterMode.strict:
         return STRICT_KEYWORDS
     if mode == FilterMode.moderate:
         return MODERATE_KEYWORDS
+    # relaxed: no base keyword blocking
     return RELAXED_KEYWORDS
 
 
