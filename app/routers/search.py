@@ -80,11 +80,16 @@ def perform_search(
         now = datetime.utcnow()
         out: List[schemas.SearchResultOut] = []
         for idx, r in enumerate(filtered, start=1):
+            url = (r.get("url") or "").strip()
+            if not url:
+                # skip results with no URL
+                continue
+
             out.append(
                 schemas.SearchResultOut(
                     id=idx,
                     title=r["title"],
-                    url=r["url"],
+                    url=url,
                     snippet=r["snippet"],
                     type=infer_result_type(r),
                     timestamp=now,
@@ -92,6 +97,7 @@ def perform_search(
                 )
             )
         return schemas.SearchResponse(results=out, has_more=has_more)
+
 
     # CASE 2: Save query + results but still return "live" preview URLs
     q = models.SearchQuery(
@@ -106,16 +112,21 @@ def perform_search(
 
     db_results: List[models.SearchResult] = []
     for r in filtered:
+        url = (r.get("url") or "").strip()
+        if not url:
+            continue
+
         row = models.SearchResult(
             query_id=q.id,
             title=r["title"],
-            url=r["url"],
+            url=url,
             snippet=r["snippet"],
             type=infer_result_type(r),
             is_blocked=False,
         )
         db.add(row)
         db_results.append(row)
+
 
     db.commit()
     db.refresh(q)
