@@ -15,3 +15,5 @@ python-multipart
 # Image censoring
 nudenet
 Pillow
+torch
+transformers

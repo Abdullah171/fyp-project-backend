@@ -12,9 +12,10 @@ from ..services.search_providers import get_provider
 from ..services.filtering import filter_results, classify_result_type
 from ..utils.settings import get_or_create_global_settings
 from ..models import ResultType  
-
+import logging
 router = APIRouter(prefix="/search", tags=["search"])
-
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def infer_result_type(r: Dict) -> ResultType:
